@@ -56,8 +56,10 @@ func run() int {
 		// This preserves exit code 65 for compilation errors, 70 for test failures, etc.
 		// instead of always returning 1, allowing CI systems to differentiate error types
 		if res.ExitCode != 0 {
+			logger.Errorf(errorutil.FormattedError(fmt.Errorf("ABC return %d", res.ExitCode)))
 			return res.ExitCode
 		}
+		logger.Errorf(errorutil.FormattedError(fmt.Errorf("ABC return 1")))
 		return 1
 	}
 
@@ -66,6 +68,7 @@ func run() int {
 		return 1
 	}
 
+	logger.Errorf(errorutil.FormattedError(fmt.Errorf("ABC return 0")))
 	return 0
 }
 
