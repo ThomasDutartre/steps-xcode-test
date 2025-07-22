@@ -52,6 +52,12 @@ func run() int {
 
 	if runErr != nil {
 		logger.Errorf(errorutil.FormattedError(fmt.Errorf("Failed to execute Step: %w", runErr)))
+		// Return the actual xcodebuild exit code for proper error reporting to GitHub and other CI systems
+		// This preserves exit code 65 for compilation errors, 70 for test failures, etc.
+		// instead of always returning 1, allowing CI systems to differentiate error types
+		if res.ExitCode != 0 {
+			return res.ExitCode
+		}
 		return 1
 	}
 

@@ -223,6 +223,7 @@ type Result struct {
 	XcodebuildBuildLog       string
 	XcodebuildTestLog        string
 	SimulatorDiagnosticsPath string
+	ExitCode                 int
 }
 
 func (s XcodeTestRunner) Run(cfg Config) (Result, error) {
@@ -251,6 +252,7 @@ func (s XcodeTestRunner) Run(cfg Config) (Result, error) {
 		s.logger.Println()
 		s.logger.Warnf("Xcode Test command exit code: %d", testExitCode)
 		s.logger.Errorf("Xcode Test command failed: %s", testErr)
+		result.ExitCode = testExitCode
 		return result, testErr
 	}
 
@@ -395,6 +397,7 @@ func (s XcodeTestRunner) runTests(cfg Config) (Result, int, error) {
 	result := Result{
 		Scheme:    cfg.Scheme,
 		DeployDir: cfg.DeployDir,
+		ExitCode:  0, // Default to success
 	}
 
 	// Run test

@@ -283,3 +283,32 @@ func createStepAndMocks(t *testing.T) (XcodeTestRunner, stepMocks) {
 
 	return step, mocks
 }
+
+func Test_GivenStep_WhenXcodebuildFailsWithExitCode_ThenResultContainsExitCode(t *testing.T) {
+	// Given
+	step, mocks := createStepAndMocks(t)
+
+	// Simulate compilation error with exit code 65 (standard xcodebuild compilation error)
+	mocks.xcodebuilder.On("RunTest", mock.Anything).Return("compilation failed", 65, fmt.Errorf("compilation error"))
+	mocks.simulatorManager.On("ResetLaunchServices").Return(nil)
+	mocks.cache.On("SwiftPackagesPath", mock.Anything).Return("", nil)
+	mocks.pathProvider.On("CreateTempDir", mock.Anything).Return("tmp_dir", nil)
+
+	config := Config{
+		ProjectPath: "./project.xcodeproj",
+		Scheme:      "Project",
+
+		Simulator:         destination.Device{UDID: "1234"},
+		IsSimulatorBooted: true,
+
+		CollectSimulatorDiagnostics: never,
+	}
+
+	// When
+	result, err := step.Run(config)
+
+	// Then
+	assert.Error(t, err)
+	assert.Equal(t, 65, result.ExitCode, "Result should contain the xcodebuild exit code for proper error reporting to CI systems")
+	assert.Contains(t, err.Error(), "compilation error")
+}
