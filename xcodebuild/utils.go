@@ -119,10 +119,19 @@ func (b *xcodebuild) runTest(params TestRunParams) (string, int, error) {
 	output, testErr := b.xcodeCommandRunner.Run(workDir, xcodebuildArgs, params.LogFormatterOptions)
 
 	if output.ExitCode != 0 {
-		fmt.Println("Exit code: ", output.ExitCode)
+		fmt.Printf("DEBUG: xcodebuild exit code: %d\n", output.ExitCode)
 	}
 
-	if testErr != nil {
+	// If xcodebuild failed to execute (testErr != nil) OR if xcodebuild executed but returned non-zero exit code
+	// we should treat both as failures to ensure proper error reporting to CI systems
+	if testErr != nil || output.ExitCode != 0 {
+		// If there's no testErr but we have a non-zero exit code, create an error for consistency
+		if testErr == nil {
+			fmt.Printf("DEBUG: Creating error for exit code %d\n", output.ExitCode)
+			testErr = fmt.Errorf("xcodebuild command failed with exit code %d", output.ExitCode)
+		} else {
+			fmt.Printf("DEBUG: xcodebuild error: %v\n", testErr)
+		}
 		return b.handleTestRunError(params, testRunResult{xcodebuildLog: string(output.RawOut), exitCode: output.ExitCode, err: testErr})
 	}
 

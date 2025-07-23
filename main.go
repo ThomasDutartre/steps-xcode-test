@@ -52,23 +52,24 @@ func run() int {
 
 	if runErr != nil {
 		logger.Errorf(errorutil.FormattedError(fmt.Errorf("Failed to execute Step: %w", runErr)))
-		// Return the actual xcodebuild exit code for proper error reporting to GitHub and other CI systems
-		// This preserves exit code 65 for compilation errors, 70 for test failures, etc.
-		// instead of always returning 1, allowing CI systems to differentiate error types
+		// For GitHub compatibility, always return exit code 1 for any failure
+		// GitHub Actions expects exit code 1 for failures, other codes may be ignored
+		// We still log the original exit code for debugging
 		if res.ExitCode != 0 {
-			logger.Errorf(errorutil.FormattedError(fmt.Errorf("ABC return %d", res.ExitCode)))
-			return res.ExitCode
+			logger.Errorf("DEBUG: Original xcodebuild exit code was %d, returning 1 for GitHub compatibility", res.ExitCode)
+		} else {
+			logger.Errorf("DEBUG: Returning exit code 1 for generic error")
 		}
-		logger.Errorf(errorutil.FormattedError(fmt.Errorf("ABC return 1")))
 		return 1
 	}
 
 	if exportErr != nil {
 		logger.Errorf(errorutil.FormattedError(fmt.Errorf("Failed to export Step outputs: %w", exportErr)))
+		logger.Errorf("DEBUG: Returning exit code 1 for export error")
 		return 1
 	}
 
-	logger.Errorf(errorutil.FormattedError(fmt.Errorf("ABC return 0")))
+	logger.Infof("DEBUG: Returning exit code 0 for success")
 	return 0
 }
 
