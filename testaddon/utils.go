@@ -16,7 +16,7 @@ type TestAddon interface {
 	ReplaceUnsupportedFilenameCharacters(s string) string
 	CopyDirectory(sourceBundle string, targetDir string) error
 	CreateDirectory(targetDir string) error
-	SaveBundleMetadata(outputDir string, bundleName string) error
+	SaveBundleMetadata(outputDir string, bundleName string, isCompilationFailure bool) error
 }
 
 type testAddon struct {
@@ -61,10 +61,11 @@ func (t testAddon) CopyDirectory(sourceBundle string, targetDir string) error {
 	return nil
 }
 
-func (t testAddon) SaveBundleMetadata(outputDir string, bundleName string) error {
+func (t testAddon) SaveBundleMetadata(outputDir string, bundleName string, isCompilationFailure bool) error {
 	fmt.Printf("DEBUG: SaveBundleMetadata called:\n")
 	fmt.Printf("  - outputDir: '%s'\n", outputDir)
 	fmt.Printf("  - bundleName: '%s'\n", bundleName)
+	fmt.Printf("  - isCompilationFailure: %v\n", isCompilationFailure)
 
 	// Save test bundle metadata with simple format (same as original)
 	type testBundle struct {
@@ -90,13 +91,13 @@ func (t testAddon) SaveBundleMetadata(outputDir string, bundleName string) error
 
 	// If this is a compilation failure, create a fake test result file
 	// This will make GitHub Checks display it as a failed test
-	if strings.Contains(bundleName, "compilation-failure") {
-		fmt.Printf("DEBUG: Bundle name contains 'compilation-failure', creating fake test result\n")
+	if isCompilationFailure {
+		fmt.Printf("DEBUG: This is a compilation failure, creating fake test result\n")
 		if err := t.createFakeTestResult(outputDir); err != nil {
 			return fmt.Errorf("failed to create fake test result: %w", err)
 		}
 	} else {
-		fmt.Printf("DEBUG: Bundle name does not contain 'compilation-failure', no fake test result needed\n")
+		fmt.Printf("DEBUG: This is not a compilation failure, no fake test result needed\n")
 	}
 
 	fmt.Printf("DEBUG: SaveBundleMetadata completed successfully\n")

@@ -41,12 +41,18 @@ func NewExporter(envRepository env.Repository, logger log.Logger, outputExporter
 }
 
 func (e exporter) ExportTestRunResult(failed bool) {
+	e.logger.Infof("DEBUG: ExportTestRunResult called with failed=%v", failed)
+
 	status := "succeeded"
 	if failed {
 		status = "failed"
 	}
+
+	e.logger.Infof("DEBUG: Setting BITRISE_XCODE_TEST_RESULT to '%s'", status)
 	if err := e.envRepository.Set("BITRISE_XCODE_TEST_RESULT", status); err != nil {
 		e.logger.Warnf("Failed to export: BITRISE_XCODE_TEST_RESULT: %s", err)
+	} else {
+		e.logger.Infof("DEBUG: Successfully set BITRISE_XCODE_TEST_RESULT to '%s'", status)
 	}
 }
 
@@ -70,6 +76,7 @@ func (e exporter) ExportXCResultBundle(deployDir, xcResultPath, scheme string) {
 			SourceTestOutputDir:   xcResultPath,
 			TargetAddonPath:       addonResultPath,
 			TargetAddonBundleName: scheme,
+			IsCompilationFailure:  false, // This is a normal test result
 		}); err != nil {
 			e.logger.Warnf("Failed to export test results: %s", err)
 		}
@@ -90,8 +97,8 @@ func (e exporter) ExportCompilationFailure(scheme string, errorMessage string) e
 		e.logger.Println()
 		e.logger.Infof("Exporting compilation failure as test result for GitHub Checks")
 
-		bundleName := scheme + "-compilation-failure"
-		e.logger.Infof("DEBUG: Creating fake test bundle with name: '%s'", bundleName)
+		bundleName := scheme
+		e.logger.Infof("DEBUG: Creating fake test bundle with name: '%s' (using scheme name for GitHub Checks compatibility)", bundleName)
 
 		// Create a fake test result using the simple format (same as normal tests)
 		// This will make GitHub Checks display the compilation failure as a failed test
@@ -99,6 +106,7 @@ func (e exporter) ExportCompilationFailure(scheme string, errorMessage string) e
 			SourceTestOutputDir:   "", // Empty since we don't have xcresult for compilation failures
 			TargetAddonPath:       addonResultPath,
 			TargetAddonBundleName: bundleName,
+			IsCompilationFailure:  true, // Mark this as a compilation failure
 		}); err != nil {
 			e.logger.Errorf("DEBUG: Failed to call CopyAndSaveMetadata: %s", err)
 			return fmt.Errorf("failed to export compilation failure metadata: %w", err)

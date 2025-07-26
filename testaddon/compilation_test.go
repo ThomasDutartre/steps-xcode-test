@@ -25,6 +25,7 @@ func Test_GivenCompilationFailure_WhenExport_ThenCreatesFakeTestResult(t *testin
 		SourceTestOutputDir:   "", // Empty for compilation failure
 		TargetAddonPath:       outputDir,
 		TargetAddonBundleName: bundleName,
+		IsCompilationFailure:  true,
 	})
 
 	// Then
@@ -72,6 +73,7 @@ func Test_GivenNormalTest_WhenExport_ThenNoFakeTestResult(t *testing.T) {
 		SourceTestOutputDir:   resultDir,
 		TargetAddonPath:       outputDir,
 		TargetAddonBundleName: bundleName,
+		IsCompilationFailure:  false,
 	})
 
 	// Then

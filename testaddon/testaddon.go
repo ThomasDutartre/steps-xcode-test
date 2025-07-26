@@ -26,6 +26,7 @@ type AddonCopy struct {
 	SourceTestOutputDir   string
 	TargetAddonPath       string
 	TargetAddonBundleName string
+	IsCompilationFailure  bool
 }
 
 func (e exporter) CopyAndSaveMetadata(info AddonCopy) error {
@@ -56,7 +57,7 @@ func (e exporter) CopyAndSaveMetadata(info AddonCopy) error {
 	}
 
 	fmt.Printf("DEBUG: Saving bundle metadata to '%s'\n", addonPerStepOutputDir)
-	if err := e.testAddon.SaveBundleMetadata(addonPerStepOutputDir, info.TargetAddonBundleName); err != nil {
+	if err := e.testAddon.SaveBundleMetadata(addonPerStepOutputDir, info.TargetAddonBundleName, info.IsCompilationFailure); err != nil {
 		return err
 	}
 
