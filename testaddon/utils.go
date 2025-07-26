@@ -62,6 +62,10 @@ func (t testAddon) CopyDirectory(sourceBundle string, targetDir string) error {
 }
 
 func (t testAddon) SaveBundleMetadata(outputDir string, bundleName string) error {
+	fmt.Printf("DEBUG: SaveBundleMetadata called:\n")
+	fmt.Printf("  - outputDir: '%s'\n", outputDir)
+	fmt.Printf("  - bundleName: '%s'\n", bundleName)
+	
 	// Save test bundle metadata with simple format (same as original)
 	type testBundle struct {
 		BundleName string `json:"test-name"`
@@ -75,26 +79,39 @@ func (t testAddon) SaveBundleMetadata(outputDir string, bundleName string) error
 	if err != nil {
 		return fmt.Errorf("could not encode metadata: %w", err)
 	}
-	if err = os.WriteFile(filepath.Join(outputDir, "test-info.json"), bytes, 0600); err != nil {
+	
+	testInfoPath := filepath.Join(outputDir, "test-info.json")
+	fmt.Printf("DEBUG: Writing test-info.json to '%s'\n", testInfoPath)
+	fmt.Printf("DEBUG: test-info.json content: %s\n", string(bytes))
+	
+	if err = os.WriteFile(testInfoPath, bytes, 0600); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
 	// If this is a compilation failure, create a fake test result file
 	// This will make GitHub Checks display it as a failed test
 	if strings.Contains(bundleName, "compilation-failure") {
+		fmt.Printf("DEBUG: Bundle name contains 'compilation-failure', creating fake test result\n")
 		if err := t.createFakeTestResult(outputDir); err != nil {
 			return fmt.Errorf("failed to create fake test result: %w", err)
 		}
+	} else {
+		fmt.Printf("DEBUG: Bundle name does not contain 'compilation-failure', no fake test result needed\n")
 	}
 
+	fmt.Printf("DEBUG: SaveBundleMetadata completed successfully\n")
 	return nil
 }
 
 func (t testAddon) createFakeTestResult(outputDir string) error {
+	fmt.Printf("DEBUG: createFakeTestResult called with outputDir: '%s'\n", outputDir)
+	
 	// Create a fake xcresult directory structure for compilation failures
 	// This makes GitHub Checks think there was a test that failed
 	resultDir := filepath.Join(outputDir, "result")
 	fakeXcresultDir := filepath.Join(resultDir, "CompilationTest.xcresult")
+	
+	fmt.Printf("DEBUG: Creating fake xcresult directory: '%s'\n", fakeXcresultDir)
 
 	if err := os.MkdirAll(fakeXcresultDir, 0700); err != nil {
 		return fmt.Errorf("failed to create fake xcresult directory: %w", err)
@@ -112,10 +129,14 @@ func (t testAddon) createFakeTestResult(outputDir string) error {
 </dict>
 </plist>`
 
-	if err := os.WriteFile(filepath.Join(fakeXcresultDir, "Info.plist"), []byte(infoPlist), 0600); err != nil {
+	infoPlistPath := filepath.Join(fakeXcresultDir, "Info.plist")
+	fmt.Printf("DEBUG: Writing Info.plist to '%s'\n", infoPlistPath)
+
+	if err := os.WriteFile(infoPlistPath, []byte(infoPlist), 0600); err != nil {
 		return fmt.Errorf("failed to create Info.plist: %w", err)
 	}
 
 	t.logger.Infof("Created fake test result for compilation failure at %s", fakeXcresultDir)
+	fmt.Printf("DEBUG: createFakeTestResult completed successfully\n")
 	return nil
 }

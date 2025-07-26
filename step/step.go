@@ -270,14 +270,19 @@ func (s XcodeTestRunner) Run(cfg Config) (Result, error) {
 }
 
 func (s XcodeTestRunner) Export(result Result, testFailed bool) error {
+	// DEBUG: Log all the values we're checking
+	s.logger.Infof("DEBUG: Export called - testFailed: %v, ExitCode: %d, XcresultPath: '%s'", testFailed, result.ExitCode, result.XcresultPath)
+	
 	// Check if this is a compilation failure (exit code 65)
 	// If so, export it as a failed test for GitHub Checks compatibility
 	if testFailed && result.ExitCode == 65 && result.XcresultPath == "" {
+		s.logger.Infof("DEBUG: COMPILATION FAILURE DETECTED - Exporting special compilation failure result")
 		// This is a compilation failure, export it specially for GitHub Checks
 		if err := s.outputExporter.ExportCompilationFailure(result.Scheme, "Compilation failed"); err != nil {
 			s.logger.Warnf("Failed to export compilation failure: %s", err)
 		}
 	} else {
+		s.logger.Infof("DEBUG: Normal export path - testFailed: %v, exitCode: %d, hasXcresult: %v", testFailed, result.ExitCode, result.XcresultPath != "")
 		// Normal test result export
 		s.outputExporter.ExportTestRunResult(testFailed)
 
