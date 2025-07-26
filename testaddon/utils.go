@@ -65,7 +65,7 @@ func (t testAddon) SaveBundleMetadata(outputDir string, bundleName string) error
 	fmt.Printf("DEBUG: SaveBundleMetadata called:\n")
 	fmt.Printf("  - outputDir: '%s'\n", outputDir)
 	fmt.Printf("  - bundleName: '%s'\n", bundleName)
-	
+
 	// Save test bundle metadata with simple format (same as original)
 	type testBundle struct {
 		BundleName string `json:"test-name"`
@@ -79,11 +79,11 @@ func (t testAddon) SaveBundleMetadata(outputDir string, bundleName string) error
 	if err != nil {
 		return fmt.Errorf("could not encode metadata: %w", err)
 	}
-	
+
 	testInfoPath := filepath.Join(outputDir, "test-info.json")
 	fmt.Printf("DEBUG: Writing test-info.json to '%s'\n", testInfoPath)
 	fmt.Printf("DEBUG: test-info.json content: %s\n", string(bytes))
-	
+
 	if err = os.WriteFile(testInfoPath, bytes, 0600); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
@@ -105,12 +105,12 @@ func (t testAddon) SaveBundleMetadata(outputDir string, bundleName string) error
 
 func (t testAddon) createFakeTestResult(outputDir string) error {
 	fmt.Printf("DEBUG: createFakeTestResult called with outputDir: '%s'\n", outputDir)
-	
+
 	// Create a fake xcresult directory structure for compilation failures
 	// This makes GitHub Checks think there was a test that failed
 	resultDir := filepath.Join(outputDir, "result")
 	fakeXcresultDir := filepath.Join(resultDir, "CompilationTest.xcresult")
-	
+
 	fmt.Printf("DEBUG: Creating fake xcresult directory: '%s'\n", fakeXcresultDir)
 
 	if err := os.MkdirAll(fakeXcresultDir, 0700); err != nil {

@@ -78,14 +78,14 @@ func (e exporter) ExportXCResultBundle(deployDir, xcResultPath, scheme string) {
 
 func (e exporter) ExportCompilationFailure(scheme string, errorMessage string) error {
 	e.logger.Infof("DEBUG: ExportCompilationFailure called - scheme: '%s', errorMessage: '%s'", scheme, errorMessage)
-	
+
 	// Export failed test result
 	e.ExportTestRunResult(true)
 
 	// Create test metadata for GitHub Checks even for compilation failures
 	addonResultPath := e.envRepository.Get(configs.BitrisePerStepTestResultDirEnvKey)
 	e.logger.Infof("DEBUG: BITRISE_TEST_RESULT_DIR = '%s'", addonResultPath)
-	
+
 	if len(addonResultPath) > 0 {
 		e.logger.Println()
 		e.logger.Infof("Exporting compilation failure as test result for GitHub Checks")
@@ -103,7 +103,7 @@ func (e exporter) ExportCompilationFailure(scheme string, errorMessage string) e
 			e.logger.Errorf("DEBUG: Failed to call CopyAndSaveMetadata: %s", err)
 			return fmt.Errorf("failed to export compilation failure metadata: %w", err)
 		}
-		
+
 		e.logger.Infof("DEBUG: Successfully exported compilation failure metadata")
 	} else {
 		e.logger.Warnf("DEBUG: BITRISE_TEST_RESULT_DIR is empty, cannot export compilation failure")

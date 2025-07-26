@@ -48,10 +48,10 @@ func run() int {
 	xcodeTestRunner.InstallDeps()
 
 	res, runErr := xcodeTestRunner.Run(config)
-	
+
 	// DEBUG: Log the result values before export
 	logger.Infof("DEBUG: xcodebuild finished - ExitCode: %d, XcresultPath: '%s', HasRunError: %v", res.ExitCode, res.XcresultPath, runErr != nil)
-	
+
 	exportErr := xcodeTestRunner.Export(res, runErr != nil)
 
 	if runErr != nil {

@@ -59,7 +59,7 @@ func (e exporter) CopyAndSaveMetadata(info AddonCopy) error {
 	if err := e.testAddon.SaveBundleMetadata(addonPerStepOutputDir, info.TargetAddonBundleName); err != nil {
 		return err
 	}
-	
+
 	fmt.Printf("DEBUG: CopyAndSaveMetadata completed successfully\n")
 	return nil
 }
