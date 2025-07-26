@@ -23,6 +23,20 @@ func (_m *Exporter) ExportSimulatorDiagnostics(deployDir string, pth string, nam
 	return r0
 }
 
+// ExportCompilationFailure provides a mock function with given fields: scheme, errorMessage
+func (_m *Exporter) ExportCompilationFailure(scheme string, errorMessage string) error {
+	ret := _m.Called(scheme, errorMessage)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(scheme, errorMessage)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // ExportTestRunResult provides a mock function with given fields: failed
 func (_m *Exporter) ExportTestRunResult(failed bool) {
 	_m.Called(failed)

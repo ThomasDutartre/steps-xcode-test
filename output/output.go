@@ -17,6 +17,7 @@ import (
 type Exporter interface {
 	ExportXCResultBundle(deployDir, xcResultPath, scheme string)
 	ExportTestRunResult(failed bool)
+	ExportCompilationFailure(scheme string, errorMessage string) error
 	ExportXcodebuildBuildLog(deployDir, xcodebuildBuildLog string) error
 	ExportXcodebuildTestLog(deployDir, xcodebuildTestLog string) error
 	ExportSimulatorDiagnostics(deployDir, pth, name string) error
@@ -73,6 +74,29 @@ func (e exporter) ExportXCResultBundle(deployDir, xcResultPath, scheme string) {
 			e.logger.Warnf("Failed to export test results: %s", err)
 		}
 	}
+}
+
+func (e exporter) ExportCompilationFailure(scheme string, errorMessage string) error {
+	// Export failed test result
+	e.ExportTestRunResult(true)
+
+	// Create test metadata for GitHub Checks even for compilation failures
+	if addonResultPath := e.envRepository.Get(configs.BitrisePerStepTestResultDirEnvKey); len(addonResultPath) > 0 {
+		e.logger.Println()
+		e.logger.Infof("Exporting compilation failure as test result for GitHub Checks")
+
+		// Create a fake test result using the simple format (same as normal tests)
+		// This will make GitHub Checks display the compilation failure as a failed test
+		if err := e.testAddonExporter.CopyAndSaveMetadata(testaddon.AddonCopy{
+			SourceTestOutputDir:   "", // Empty since we don't have xcresult for compilation failures
+			TargetAddonPath:       addonResultPath,
+			TargetAddonBundleName: scheme + "-compilation-failure",
+		}); err != nil {
+			return fmt.Errorf("failed to export compilation failure metadata: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (e exporter) ExportXcodebuildBuildLog(deployDir, xcodebuildBuildLog string) error {

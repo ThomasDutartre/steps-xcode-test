@@ -29,9 +29,18 @@ func (e exporter) CopyAndSaveMetadata(info AddonCopy) error {
 	info.TargetAddonBundleName = e.testAddon.ReplaceUnsupportedFilenameCharacters(info.TargetAddonBundleName)
 	addonPerStepOutputDir := filepath.Join(info.TargetAddonPath, info.TargetAddonBundleName)
 
-	if err := e.testAddon.CopyDirectory(info.SourceTestOutputDir, addonPerStepOutputDir); err != nil {
-		return err
+	// Only copy directory if source exists (for normal test results)
+	if info.SourceTestOutputDir != "" {
+		if err := e.testAddon.CopyDirectory(info.SourceTestOutputDir, addonPerStepOutputDir); err != nil {
+			return err
+		}
+	} else {
+		// For compilation failures, just create the target directory
+		if err := e.testAddon.CreateDirectory(addonPerStepOutputDir); err != nil {
+			return err
+		}
 	}
+
 	if err := e.testAddon.SaveBundleMetadata(addonPerStepOutputDir, info.TargetAddonBundleName); err != nil {
 		return err
 	}
