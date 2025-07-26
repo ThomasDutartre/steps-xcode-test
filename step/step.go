@@ -285,6 +285,8 @@ func (s XcodeTestRunner) Export(result Result, testFailed bool) error {
 		if err := s.outputExporter.ExportCompilationFailure(result.Scheme, "Compilation failed"); err != nil {
 			s.logger.Warnf("Failed to export compilation failure: %s", err)
 		}
+		// For compilation failures, we don't export the normal test results as they would compete with our fake result
+		s.logger.Infof("DEBUG: Skipping normal test result export for compilation failure")
 	} else {
 		s.logger.Infof("DEBUG: Normal export path - testFailed: %v, exitCode: %d, hasXcresult: %v", testFailed, result.ExitCode, result.XcresultPath != "")
 		// Normal test result export
