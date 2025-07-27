@@ -275,9 +275,9 @@ func (s XcodeTestRunner) Export(result Result, testFailed bool) error {
 
 	// Check if this is a compilation failure (exit code 66 - temporarily disabled)
 	// If so, export it as a failed test for GitHub Checks compatibility
-	isCompilationFailure := false // Temporarily force normal path
-	s.logger.Infof("DEBUG: Compilation failure check - testFailed: %v, exitCode==66: %v, isCompilationFailure: %v (FORCED TO FALSE)",
-		testFailed, result.ExitCode == 66, isCompilationFailure)
+	isCompilationFailure := true // Temporarily force compilation failure path
+	s.logger.Infof("DEBUG: Compilation failure check - testFailed: %v, exitCode==65: %v, isCompilationFailure: %v (FORCED TO FALSE)",
+		testFailed, result.ExitCode == 65, isCompilationFailure)
 
 	if isCompilationFailure {
 		s.logger.Infof("DEBUG: COMPILATION FAILURE DETECTED - Exporting special compilation failure result")
