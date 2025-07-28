@@ -470,9 +470,10 @@ func (s XcodeTestRunner) teardownSimulator(simulatorID string, simulatorDebug ex
 // rather than test failures. Since exit code 65 can indicate both compilation errors and test failures,
 // we need to use additional heuristics.
 func (s XcodeTestRunner) detectCompilationFailure(result Result, testFailed bool) bool {
-	s.logger.Debugf("Detecting compilation failure - testFailed: %v, exitCode: %d, hasXcresult: %v",
-		testFailed, result.ExitCode, result.XcresultPath != "")
+	s.logger.Debugf("Detecting compilation failure - testFailed: %v, exitCode: %d, XcresultPath: %v",
+		testFailed, result.ExitCode, result.XcresultPath)
 
+	s.logger.Debugf("result: %+v", result)
 	// If there's no failure, it's definitely not a compilation failure
 	if !testFailed {
 		s.logger.Debugf("No test failure detected, not a compilation failure")
