@@ -17,6 +17,7 @@ import (
 type Exporter interface {
 	ExportXCResultBundle(deployDir, xcResultPath, scheme string)
 	ExportTestRunResult(failed bool)
+	ExportCompilationFailure(scheme string, errorMessage string) error
 	ExportXcodebuildBuildLog(deployDir, xcodebuildBuildLog string) error
 	ExportXcodebuildTestLog(deployDir, xcodebuildTestLog string) error
 	ExportSimulatorDiagnostics(deployDir, pth, name string) error
@@ -69,10 +70,48 @@ func (e exporter) ExportXCResultBundle(deployDir, xcResultPath, scheme string) {
 			SourceTestOutputDir:   xcResultPath,
 			TargetAddonPath:       addonResultPath,
 			TargetAddonBundleName: scheme,
+			IsCompilationFailure:  false, // This is a normal test result
 		}); err != nil {
 			e.logger.Warnf("Failed to export test results: %s", err)
 		}
 	}
+}
+
+func (e exporter) ExportCompilationFailure(scheme string, errorMessage string) error {
+	e.logger.Debugf("ExportCompilationFailure called - scheme: '%s', errorMessage: '%s'", scheme, errorMessage)
+
+	// Export failed test result
+	e.ExportTestRunResult(true)
+
+	// Create test metadata for GitHub Checks even for compilation failures
+	addonResultPath := e.envRepository.Get(configs.BitrisePerStepTestResultDirEnvKey)
+	e.logger.Debugf("BITRISE_TEST_RESULT_DIR = '%s'", addonResultPath)
+
+	if len(addonResultPath) > 0 {
+		e.logger.Println()
+		e.logger.Infof("Exporting compilation failure as test result for GitHub Checks")
+
+		bundleName := scheme
+		e.logger.Debugf("Creating fake test bundle with name: '%s' (using scheme name for GitHub Checks compatibility)", bundleName)
+
+		// Create a fake test result using the simple format (same as normal tests)
+		// This will make GitHub Checks display the compilation failure as a failed test
+		if err := e.testAddonExporter.CopyAndSaveMetadata(testaddon.AddonCopy{
+			SourceTestOutputDir:   "", // Empty since we don't have xcresult for compilation failures
+			TargetAddonPath:       addonResultPath,
+			TargetAddonBundleName: bundleName,
+			IsCompilationFailure:  true, // Mark this as a compilation failure
+		}); err != nil {
+			e.logger.Errorf("Failed to call CopyAndSaveMetadata: %s", err)
+			return fmt.Errorf("failed to export compilation failure metadata: %w", err)
+		}
+
+		e.logger.Debugf("Successfully exported compilation failure metadata")
+	} else {
+		e.logger.Warnf("BITRISE_TEST_RESULT_DIR is empty, cannot export compilation failure")
+	}
+
+	return nil
 }
 
 func (e exporter) ExportXcodebuildBuildLog(deployDir, xcodebuildBuildLog string) error {

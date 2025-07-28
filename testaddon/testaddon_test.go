@@ -34,6 +34,7 @@ func runTest(t *testing.T, bundleName string, expectedBundleName string) {
 		SourceTestOutputDir:   resultDir,
 		TargetAddonPath:       outputDir,
 		TargetAddonBundleName: bundleName,
+		IsCompilationFailure:  false,
 	})
 
 	// Then

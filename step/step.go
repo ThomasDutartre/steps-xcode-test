@@ -223,6 +223,7 @@ type Result struct {
 	XcodebuildBuildLog       string
 	XcodebuildTestLog        string
 	SimulatorDiagnosticsPath string
+	ExitCode                 int
 }
 
 func (s XcodeTestRunner) Run(cfg Config) (Result, error) {
@@ -251,6 +252,7 @@ func (s XcodeTestRunner) Run(cfg Config) (Result, error) {
 		s.logger.Println()
 		s.logger.Warnf("Xcode Test command exit code: %d", testExitCode)
 		s.logger.Errorf("Xcode Test command failed: %s", testErr)
+		result.ExitCode = testExitCode
 		return result, testErr
 	}
 
@@ -268,8 +270,23 @@ func (s XcodeTestRunner) Run(cfg Config) (Result, error) {
 }
 
 func (s XcodeTestRunner) Export(result Result, testFailed bool) error {
-	// export test run status
-	s.outputExporter.ExportTestRunResult(testFailed)
+	// Detect if this is a compilation failure by analyzing available information
+	// We need a more robust way than just exit codes since exit code 65 can mean both compilation errors and test failures
+	isCompilationFailure := s.detectCompilationFailure(result, testFailed)
+
+	if isCompilationFailure {
+		s.logger.Infof("Detected compilation failure, exporting as test failure for GitHub Checks")
+		// This is a compilation failure, export it specially for GitHub Checks
+		if err := s.outputExporter.ExportCompilationFailure(result.Scheme, "Compilation failed"); err != nil {
+			s.logger.Warnf("Failed to export compilation failure: %s", err)
+		}
+		// For compilation failures, we still export the normal test results to ensure consistency
+		s.outputExporter.ExportTestRunResult(testFailed)
+	} else {
+		s.logger.Debugf("Normal test export path - testFailed: %v", testFailed)
+		// Normal test result export
+		s.outputExporter.ExportTestRunResult(testFailed)
+	}
 
 	if result.XcresultPath != "" {
 		s.outputExporter.ExportXCResultBundle(result.DeployDir, result.XcresultPath, result.Scheme)
@@ -395,6 +412,7 @@ func (s XcodeTestRunner) runTests(cfg Config) (Result, int, error) {
 	result := Result{
 		Scheme:    cfg.Scheme,
 		DeployDir: cfg.DeployDir,
+		ExitCode:  0, // Default to success
 	}
 
 	// Run test
@@ -446,4 +464,40 @@ func (s XcodeTestRunner) teardownSimulator(simulatorID string, simulatorDebug ex
 	}
 
 	return simulatorDiagnosticsPath
+}
+
+// detectCompilationFailure attempts to detect if the failure is due to compilation errors
+// rather than test failures. Since exit code 65 can indicate both compilation errors and test failures,
+// we need to use additional heuristics.
+func (s XcodeTestRunner) detectCompilationFailure(result Result, testFailed bool) bool {
+	s.logger.Debugf("Detecting compilation failure - testFailed: %v, exitCode: %d, hasXcresult: %v",
+		testFailed, result.ExitCode, result.XcresultPath != "")
+
+	// If there's no failure, it's definitely not a compilation failure
+	if !testFailed {
+		s.logger.Debugf("No test failure detected, not a compilation failure")
+		return false
+	}
+
+	// TODO: Implement more sophisticated detection by analyzing:
+	// 1. .xcresult bundle contents (if available)
+	// 2. xcodebuild log patterns
+	// 3. Other heuristics
+
+	// For now, use a simple heuristic: if we have exit code 65 but no .xcresult,
+	// it's likely a compilation failure (since successful test runs usually generate .xcresult)
+	if result.ExitCode == 65 && result.XcresultPath == "" {
+		s.logger.Debugf("Exit code 65 with no xcresult - likely compilation failure")
+		return true
+	}
+
+	// If we have an .xcresult, we could analyze it to determine the failure type
+	// For now, assume it's a test failure if we have an .xcresult
+	if result.XcresultPath != "" {
+		s.logger.Debugf("xcresult available - assuming test failure rather than compilation failure")
+		return false
+	}
+
+	s.logger.Debugf("Could not determine failure type, defaulting to test failure")
+	return false
 }

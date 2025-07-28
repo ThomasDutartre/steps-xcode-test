@@ -48,6 +48,7 @@ func run() int {
 	xcodeTestRunner.InstallDeps()
 
 	res, runErr := xcodeTestRunner.Run(config)
+
 	exportErr := xcodeTestRunner.Export(res, runErr != nil)
 
 	if runErr != nil {
