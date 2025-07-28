@@ -3,6 +3,7 @@ package step
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -408,35 +409,53 @@ func (s XcodeTestRunner) prepareSimulator(enableSimulatorVerboseLog bool, simula
 }
 
 func (s XcodeTestRunner) runTests(cfg Config) (Result, int, error) {
+	s.logger.Debugf("Starting runTests for scheme: %s", cfg.Scheme)
+
 	// Run build
 	result := Result{
 		Scheme:    cfg.Scheme,
 		DeployDir: cfg.DeployDir,
 		ExitCode:  0, // Default to success
 	}
+	s.logger.Debugf("Initialized result struct with scheme: %s, deployDir: %s", result.Scheme, result.DeployDir)
 
 	// Run test
 	tempDir, err := s.pathProvider.CreateTempDir("XCUITestOutput")
 	if err != nil {
+		s.logger.Debugf("Failed to create temp directory: %v", err)
 		return result, -1, fmt.Errorf("could not create test output temporary directory: %w", err)
 	}
+	s.logger.Debugf("Created temp directory: %s", tempDir)
+
 	xcresultPath := path.Join(tempDir, fmt.Sprintf("Test-%s.xcresult", cfg.Scheme))
+	s.logger.Debugf("xcresult will be saved to: %s", xcresultPath)
 
 	swiftPackagesPath, err := s.cache.SwiftPackagesPath(cfg.ProjectPath)
 	if err != nil {
+		s.logger.Debugf("Failed to get Swift Packages path: %v", err)
 		return result, -1, fmt.Errorf("failed to get Swift Packages path: %w", err)
 	}
+	s.logger.Debugf("Swift packages path: %s", swiftPackagesPath)
 
 	testParams := s.utils.CreateTestParams(cfg, xcresultPath, swiftPackagesPath)
+	s.logger.Debugf("Created test params, about to run xcodebuild test")
 
 	testLog, exitCode, testErr := s.xcodebuild.RunTest(testParams)
+	s.logger.Debugf("xcodebuild RunTest completed - exitCode: %d, hasError: %v, logLength: %d",
+		exitCode, testErr != nil, len(testLog))
+
 	result.XcresultPath = xcresultPath
 	result.XcodebuildTestLog = testLog
+	s.logger.Debugf("Updated result - XcresultPath: %s, XcodebuildTestLog length: %d",
+		result.XcresultPath, len(result.XcodebuildTestLog))
 
 	if testErr != nil || cfg.LogFormatter == XcodebuildTool {
+		s.logger.Debugf("Printing last lines of xcodebuild test log (testErr: %v, logFormatter: %s)",
+			testErr != nil, cfg.LogFormatter)
 		s.utils.PrintLastLinesOfXcodebuildTestLog(testLog, testErr == nil)
 	}
 
+	s.logger.Debugf("runTests completed - returning exitCode: %d, error: %v", exitCode, testErr)
 	return result, exitCode, testErr
 }
 
@@ -470,32 +489,40 @@ func (s XcodeTestRunner) teardownSimulator(simulatorID string, simulatorDebug ex
 // rather than test failures. Since exit code 65 can indicate both compilation errors and test failures,
 // we need to use additional heuristics.
 func (s XcodeTestRunner) detectCompilationFailure(result Result, testFailed bool) bool {
-	s.logger.Debugf("Detecting compilation failure - testFailed: %v, exitCode: %d, XcresultPath: %v",
+	s.logger.Debugf("Detecting compilation failure - testFailed: %v, exitCode: %d, XcresultPath: %s",
 		testFailed, result.ExitCode, result.XcresultPath)
 
-	s.logger.Debugf("result: %+v", result)
 	// If there's no failure, it's definitely not a compilation failure
 	if !testFailed {
 		s.logger.Debugf("No test failure detected, not a compilation failure")
 		return false
 	}
 
-	// TODO: Implement more sophisticated detection by analyzing:
-	// 1. .xcresult bundle contents (if available)
-	// 2. xcodebuild log patterns
-	// 3. Other heuristics
+	// Check if the .xcresult file actually exists on disk
+	xcresultExists := false
+	if result.XcresultPath != "" {
+		if _, err := os.Stat(result.XcresultPath); err == nil {
+			xcresultExists = true
+			s.logger.Debugf("xcresult file exists at: %s", result.XcresultPath)
+		} else {
+			s.logger.Debugf("xcresult file does not exist at: %s (error: %v)", result.XcresultPath, err)
+		}
+	} else {
+		s.logger.Debugf("No xcresult path provided")
+	}
 
-	// For now, use a simple heuristic: if we have exit code 65 but no .xcresult,
-	// it's likely a compilation failure (since successful test runs usually generate .xcresult)
-	if result.ExitCode == 65 && result.XcresultPath == "" {
-		s.logger.Debugf("Exit code 65 with no xcresult - likely compilation failure")
+	// Enhanced heuristic: if we have exit code 65 and no actual .xcresult file,
+	// it's very likely a compilation failure (since test runs that actually execute generate .xcresult)
+	if result.ExitCode == 65 && !xcresultExists {
+		s.logger.Debugf("Exit code 65 with no existing xcresult file - likely compilation failure")
 		return true
 	}
 
-	// If we have an .xcresult, we could analyze it to determine the failure type
-	// For now, assume it's a test failure if we have an .xcresult
-	if result.XcresultPath != "" {
-		s.logger.Debugf("xcresult available - assuming test failure rather than compilation failure")
+	// If we have an actual .xcresult file, we could analyze it to determine the failure type
+	// For now, assume it's a test failure if we have a real .xcresult file
+	if xcresultExists {
+		s.logger.Debugf("xcresult file exists - assuming test failure rather than compilation failure")
+		// TODO: Could analyze the .xcresult contents here for more sophisticated detection
 		return false
 	}
 
