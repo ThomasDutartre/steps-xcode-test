@@ -41,9 +41,11 @@ func NewExporter(envRepository env.Repository, logger log.Logger, outputExporter
 }
 
 func (e exporter) ExportTestRunResult(failed bool) {
+	e.logger.Debugf("ExportTestRunResult called - failed: %v", failed)
 	status := "succeeded"
 	if failed {
 		status = "failed"
+		e.logger.Debugf("Test run failed, setting status to 'failed'")
 	}
 	if err := e.envRepository.Set("BITRISE_XCODE_TEST_RESULT", status); err != nil {
 		e.logger.Warnf("Failed to export: BITRISE_XCODE_TEST_RESULT: %s", err)
